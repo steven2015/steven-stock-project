@@ -4,9 +4,6 @@
 package com.css.system.utility;
 
 import java.lang.reflect.Array;
-import java.lang.reflect.Field;
-import java.lang.reflect.InvocationTargetException;
-import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -26,29 +23,29 @@ public class MathUtility{
 
 	private MathUtility(){
 	}
-	public static final <T>PeakRegion[] getPeaks(final List<?> values, final int minIndexDiff, final Comparator<T> c, final Field f) throws IllegalAccessException, IllegalArgumentException, InvocationTargetException{
-		return getPeaks(values.toArray(), minIndexDiff, c, f);
-	}
-	@SuppressWarnings("unchecked")
-	public static final <T>PeakRegion[] getPeaks(final Object[] values, final int minIndexDiff, final Comparator<T> c, final Field f) throws IllegalAccessException, IllegalArgumentException, InvocationTargetException{
-		f.setAccessible(true);
-		final IndexedValue<T>[] ivs = new IndexedValue[values.length];
+	public static final PeakRegion[] getPeaks(final int[] values, final int minIndexDiff){
+		final Integer[] objects = new Integer[values.length];
 		for(int i = 0; i < values.length; i++){
-			ivs[i] = new IndexedValue<T>(i, (T)f.get(values[i]));
+			objects[i] = values[i];
 		}
-		return getPeaks(ivs, minIndexDiff, c);
+		return getPeaks(objects, minIndexDiff, new Comparator<Integer>(){
+			@Override
+			public int compare(final Integer o1, final Integer o2){
+				return o2.compareTo(o1);
+			}
+		});
 	}
-	public static final <T>PeakRegion[] getPeaks(final List<?> values, final int minIndexDiff, final Comparator<T> c, final Method m) throws IllegalAccessException, IllegalArgumentException, InvocationTargetException{
-		return getPeaks(values.toArray(), minIndexDiff, c, m);
-	}
-	@SuppressWarnings("unchecked")
-	public static final <T>PeakRegion[] getPeaks(final Object[] values, final int minIndexDiff, final Comparator<T> c, final Method m) throws IllegalAccessException, IllegalArgumentException, InvocationTargetException{
-		m.setAccessible(true);
-		final IndexedValue<T>[] ivs = new IndexedValue[values.length];
+	public static final PeakRegion[] getPeaks(final double[] values, final int minIndexDiff){
+		final Double[] objects = new Double[values.length];
 		for(int i = 0; i < values.length; i++){
-			ivs[i] = new IndexedValue<T>(i, (T)m.invoke(values[i], (Object[])null));
+			objects[i] = values[i];
 		}
-		return getPeaks(ivs, minIndexDiff, c);
+		return getPeaks(objects, minIndexDiff, new Comparator<Double>(){
+			@Override
+			public int compare(final Double o1, final Double o2){
+				return o2.compareTo(o1);
+			}
+		});
 	}
 	public static final <T>PeakRegion[] getPeaks(final T[] values, final int minIndexDiff, final Comparator<T> c){
 		@SuppressWarnings("unchecked")
@@ -130,9 +127,14 @@ public class MathUtility{
 		}
 		Collections.sort(peaks);
 		final PeakRegion[] regions = new PeakRegion[peaks.size()];
+		int checksum = 0;
 		for(int i = 0; i < regions.length; i++){
 			final TempPeakRegion tpk = peaks.get(i);
 			regions[i] = new PeakRegion(tpk.peakIndex, tpk.startIndex, tpk.endIndex);
+			checksum += tpk.endIndex - tpk.startIndex + 1;
+		}
+		if(checksum != ivs.length){
+			throw new RuntimeException("there's a bug in this function");
 		}
 		return regions;
 	}
@@ -170,174 +172,102 @@ public class MathUtility{
 		}
 		return Arrays.copyOf(copy, nextCopyIndex);
 	}
-	public static final int getMedian(final int[] values, final boolean excludeZero){
-		final int[] copy = (excludeZero ? excludeZero(values) : values.clone());
+	public static final int median(final int[] values){
+		final int[] copy = values.clone();
 		Arrays.sort(copy);
 		return copy[copy.length / 2];
 	}
-	public static final double getMedian(final double[] values, final boolean excludeZero){
-		final double[] copy = (excludeZero ? excludeZero(values) : values.clone());
+	public static final double median(final double[] values){
+		final double[] copy = values.clone();
 		Arrays.sort(copy);
 		return copy[copy.length / 2];
 	}
-	public static final <T extends Number>T getMedian(final T[] values, final Class<T> clazz, final boolean excludeZero){
-		return getMedian((excludeZero ? excludeZero(values, clazz) : values.clone()), new Comparator<T>(){
-			@Override
-			public int compare(final T o1, final T o2){
-				final double d1 = o1.doubleValue();
-				final double d2 = o2.doubleValue();
-				if(d1 > d2){
-					return 1;
-				}else if(d1 < d2){
-					return -1;
-				}
-				return 0;
-			}
-		});
-	}
-	public static final <T>T getMedian(final T[] values, final Comparator<T> c){
+	public static final <T>T median(final T[] values, final Comparator<T> c){
 		final T[] copy = values.clone();
 		Arrays.sort(copy, c);
 		return copy[copy.length / 2];
 	}
-	public static final double getVariance(final int[] values, final boolean excludeZero){
-		final double mean = getMean(values, excludeZero);
-		return getMeanOfSquare(values, excludeZero) - mean * mean;
+	public static final <T extends Comparable<T>>T median(final T[] values){
+		final T[] copy = values.clone();
+		Arrays.sort(copy);
+		return copy[copy.length / 2];
 	}
-	public static final double getVariance(final double[] values, final boolean excludeZero){
-		final double mean = getMean(values, excludeZero);
-		return getMeanOfSquare(values, excludeZero) - mean * mean;
+	public static final double variance(final int[] values){
+		final double mean = mean(values);
+		return meanOfSquare(values) - mean * mean;
 	}
-	public static final double getVariance(final Number[] values, final boolean excludeZero){
-		final double mean = getMean(values, excludeZero);
-		return getMeanOfSquare(values, excludeZero) - mean * mean;
+	public static final double variance(final double[] values){
+		final double mean = mean(values);
+		return meanOfSquare(values) - mean * mean;
 	}
-	public static final double getMean(final int[] values, final boolean excludeZero){
+	public static final double variance(final Number[] values){
+		final double mean = mean(values);
+		return meanOfSquare(values) - mean * mean;
+	}
+	public static final double mean(final int[] values){
 		double mean = 0;
 		double count = 0;
 		int nextCount = 1;
-		if(excludeZero){
-			for(final int value : values){
-				if(value != 0){
-					mean = mean * (count / nextCount) + value / nextCount;
-					count++;
-					nextCount++;
-				}
-			}
-		}else{
-			for(final int value : values){
-				mean = mean * (count / nextCount) + value / nextCount;
-				count++;
-				nextCount++;
-			}
+		for(final int value : values){
+			mean = mean * (count / nextCount) + value / nextCount;
+			count = nextCount;
+			nextCount++;
 		}
 		return mean;
 	}
-	public static final double getMean(final double[] values, final boolean excludeZero){
+	public static final double mean(final double[] values){
 		double mean = 0;
 		double count = 0;
 		int nextCount = 1;
-		if(excludeZero){
-			for(final double value : values){
-				if(value != 0){
-					mean = mean * (count / nextCount) + value / nextCount;
-					count++;
-					nextCount++;
-				}
-			}
-		}else{
-			for(final double value : values){
-				mean = mean * (count / nextCount) + value / nextCount;
-				count++;
-				nextCount++;
-			}
+		for(final double value : values){
+			mean = mean * (count / nextCount) + value / nextCount;
+			count = nextCount;
+			nextCount++;
 		}
 		return mean;
 	}
-	public static final double getMean(final Number[] values, final boolean excludeZero){
+	public static final double mean(final Number[] values){
 		double mean = 0;
 		double count = 0;
 		int nextCount = 1;
-		if(excludeZero){
-			for(final Number value : values){
-				final double v = value.doubleValue();
-				if(v != 0){
-					mean = mean * (count / nextCount) + v / nextCount;
-					count++;
-					nextCount++;
-				}
-			}
-		}else{
-			for(final Number value : values){
-				mean = mean * (count / nextCount) + value.doubleValue() / nextCount;
-				count++;
-				nextCount++;
-			}
+		for(final Number value : values){
+			mean = mean * (count / nextCount) + value.doubleValue() / nextCount;
+			count = nextCount;
+			nextCount++;
 		}
 		return mean;
 	}
-	public static final double getMeanOfSquare(final int[] values, final boolean excludeZero){
+	public static final double meanOfSquare(final int[] values){
 		double mean = 0;
 		double count = 0;
 		int nextCount = 1;
-		if(excludeZero){
-			for(final int value : values){
-				if(value != 0){
-					mean = mean * (count / nextCount) + value * value / nextCount;
-					count++;
-					nextCount++;
-				}
-			}
-		}else{
-			for(final int value : values){
-				mean = mean * (count / nextCount) + value * value / nextCount;
-				count++;
-				nextCount++;
-			}
+		for(final int value : values){
+			mean = mean * (count / nextCount) + value * value / nextCount;
+			count = nextCount;
+			nextCount++;
 		}
 		return mean;
 	}
-	public static final double getMeanOfSquare(final double[] values, final boolean excludeZero){
+	public static final double meanOfSquare(final double[] values){
 		double mean = 0;
 		double count = 0;
 		int nextCount = 1;
-		if(excludeZero){
-			for(final double value : values){
-				if(value != 0){
-					mean = mean * (count / nextCount) + value * value / nextCount;
-					count++;
-					nextCount++;
-				}
-			}
-		}else{
-			for(final double value : values){
-				mean = mean * (count / nextCount) + value * value / nextCount;
-				count++;
-				nextCount++;
-			}
+		for(final double value : values){
+			mean = mean * (count / nextCount) + value * value / nextCount;
+			count = nextCount;
+			nextCount++;
 		}
 		return mean;
 	}
-	public static final double getMeanOfSquare(final Number[] values, final boolean excludeZero){
+	public static final double meanOfSquare(final Number[] values){
 		double mean = 0;
 		double count = 0;
 		int nextCount = 1;
-		if(excludeZero){
-			for(final Number value : values){
-				final double v = value.doubleValue();
-				if(v != 0){
-					mean = mean * (count / nextCount) + v * v / nextCount;
-					count++;
-					nextCount++;
-				}
-			}
-		}else{
-			for(final Number value : values){
-				final double v = value.doubleValue();
-				mean = mean * (count / nextCount) + v * v / nextCount;
-				count++;
-				nextCount++;
-			}
+		for(final Number value : values){
+			final double v = value.doubleValue();
+			mean = mean * (count / nextCount) + v * v / nextCount;
+			count = nextCount;
+			nextCount++;
 		}
 		return mean;
 	}
